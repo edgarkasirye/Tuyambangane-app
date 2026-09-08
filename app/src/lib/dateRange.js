@@ -1,11 +1,14 @@
 // Sales are reviewed by calendar day in the shop's own local time, not
 // UTC, so "today" here means the browser's local today.
 
-export function todayLocalISODate() {
-  const d = new Date()
-  const offset = d.getTimezoneOffset()
-  const local = new Date(d.getTime() - offset * 60000)
+export function toLocalISODate(date) {
+  const offset = date.getTimezoneOffset()
+  const local = new Date(date.getTime() - offset * 60000)
   return local.toISOString().slice(0, 10)
+}
+
+export function todayLocalISODate() {
+  return toLocalISODate(new Date())
 }
 
 export function startOfLocalDayISO(dateStr) {

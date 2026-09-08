@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 import { useAuth } from '../auth/AuthContext'
+import { formatMoney } from '../lib/formatMoney'
 import LineItemForm from './LineItemForm'
 
 export default function RecordSale() {
@@ -168,7 +169,7 @@ export default function RecordSale() {
                   {item.size ? `, size ${item.size}` : ''}
                 </div>
                 <div className="art-number">
-                  {item.quantity} × {item.unitType} @ {item.unitPrice}
+                  {item.quantity} × {item.unitType} @ {formatMoney(item.unitPrice)}
                 </div>
               </div>
               <button type="button" className="link-button" onClick={() => handleRemoveLineItem(item.tempId)}>
@@ -178,7 +179,7 @@ export default function RecordSale() {
           ))}
           <div className="cart-total">
             <span>Total</span>
-            <span>{total}</span>
+            <span>{formatMoney(total)}</span>
           </div>
           {error && <p className="form-error">{error}</p>}
           <button type="button" onClick={handleCompleteSale} disabled={submitting || !shopId}>

@@ -1,14 +1,20 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../supabaseClient'
 import { useAuth } from '../auth/AuthContext'
-import { todayLocalISODate, startOfLocalDayISO, endOfLocalDayISO } from '../lib/dateRange'
+import { todayLocalISODate, startOfLocalDayISO, endOfLocalDayISO, toLocalISODate } from '../lib/dateRange'
+import { formatMoney } from '../lib/formatMoney'
+import MonthCalendar from './MonthCalendar'
 
 export default function SalesView() {
   const { isOwnerOrAdmin } = useAuth()
   const today = todayLocalISODate()
+  const todayObj = new Date(`${today}T00:00:00`)
 
-  const [startDate, setStartDate] = useState(today)
-  const [endDate, setEndDate] = useState(today)
+  const [date, setDate] = useState(today)
+  const [calendarOpen, setCalendarOpen] = useState(false)
+  const [viewYear, setViewYear] = useState(todayObj.getFullYear())
+  const [viewMonth, setViewMonth] = useState(todayObj.getMonth())
+  const [monthSales, setMonthSales] = useState(null)
   const [shops, setShops] = useState(null)
   const [shopFilter, setShopFilter] = useState('all')
   const [sales, setSales] = useState(null)
@@ -25,6 +31,40 @@ export default function SalesView() {
       })
   }, [isOwnerOrAdmin])
 
+  // Which days in the currently-viewed month have at least one sale,
+  // so the calendar can show a dot instead of making staff guess.
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadMonth() {
+      const start = new Date(viewYear, viewMonth, 1)
+      const end = new Date(viewYear, viewMonth + 1, 1)
+      const { data, error } = await supabase
+        .from('sales')
+        .select('sold_at, shop_id')
+        .gte('sold_at', start.toISOString())
+        .lt('sold_at', end.toISOString())
+
+      if (cancelled) return
+      if (!error) setMonthSales(data)
+    }
+
+    loadMonth()
+    return () => {
+      cancelled = true
+    }
+  }, [viewYear, viewMonth])
+
+  const datesWithSales = useMemo(() => {
+    const set = new Set()
+    if (!monthSales) return set
+    for (const s of monthSales) {
+      if (shopFilter !== 'all' && s.shop_id !== shopFilter) continue
+      set.add(toLocalISODate(new Date(s.sold_at)))
+    }
+    return set
+  }, [monthSales, shopFilter])
+
   useEffect(() => {
     let cancelled = false
 
@@ -39,8 +79,8 @@ export default function SalesView() {
            sale_line_items(id, size, quantity, unit_type, unit_price, total_amount,
              variant:variants(color, style:styles(name, art_number)))`
         )
-        .gte('sold_at', startOfLocalDayISO(startDate))
-        .lte('sold_at', endOfLocalDayISO(endDate))
+        .gte('sold_at', startOfLocalDayISO(date))
+        .lte('sold_at', endOfLocalDayISO(date))
         .order('sold_at', { ascending: false })
 
       if (cancelled) return
@@ -52,7 +92,7 @@ export default function SalesView() {
     return () => {
       cancelled = true
     }
-  }, [startDate, endDate])
+  }, [date])
 
   const filteredSales = useMemo(() => {
     if (!sales) return null
@@ -68,6 +108,35 @@ export default function SalesView() {
     )
   }, [filteredSales])
 
+  const isToday = date === today
+
+  function handleToday() {
+    setDate(today)
+    setViewYear(todayObj.getFullYear())
+    setViewMonth(todayObj.getMonth())
+  }
+
+  function handleChangeMonth(delta) {
+    let m = viewMonth + delta
+    let y = viewYear
+    if (m < 0) {
+      m = 11
+      y -= 1
+    } else if (m > 11) {
+      m = 0
+      y += 1
+    }
+    setViewMonth(m)
+    setViewYear(y)
+  }
+
+  const dateLabel = new Date(`${date}T00:00:00`).toLocaleDateString(undefined, {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  })
+
   return (
     <div>
       <div className="page-title">
@@ -75,22 +144,10 @@ export default function SalesView() {
       </div>
 
       <div className="date-range-bar">
-        <label>
-          From
-          <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-        </label>
-        <label>
-          To
-          <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
-        </label>
-        <button
-          type="button"
-          className="secondary"
-          onClick={() => {
-            setStartDate(today)
-            setEndDate(today)
-          }}
-        >
+        <button type="button" className="date-picker-toggle" onClick={() => setCalendarOpen((o) => !o)}>
+          {dateLabel} {calendarOpen ? '▴' : '▾'}
+        </button>
+        <button type="button" className="secondary" onClick={handleToday} disabled={isToday}>
           Today
         </button>
         {isOwnerOrAdmin && shops && (
@@ -108,6 +165,20 @@ export default function SalesView() {
         )}
       </div>
 
+      {calendarOpen && (
+        <MonthCalendar
+          year={viewYear}
+          month={viewMonth}
+          selectedDate={date}
+          datesWithSales={datesWithSales}
+          onSelectDate={(d) => {
+            setDate(d)
+            setCalendarOpen(false)
+          }}
+          onChangeMonth={handleChangeMonth}
+        />
+      )}
+
       {error && <p className="form-error">{error}</p>}
 
       {!filteredSales && !error && <p className="page-loading">Loading sales…</p>}
@@ -118,10 +189,10 @@ export default function SalesView() {
             <span>
               {filteredSales.length} sale{filteredSales.length === 1 ? '' : 's'}
             </span>
-            <span className="total">{grandTotal}</span>
+            <span className="total">{formatMoney(grandTotal)}</span>
           </div>
 
-          {filteredSales.length === 0 && <p>No sales in this range.</p>}
+          {filteredSales.length === 0 && <p>No sales on this date.</p>}
 
           <div className="card-list">
             {filteredSales.map((sale) => {
@@ -144,12 +215,12 @@ export default function SalesView() {
                         {li.variant.color}
                         {li.size ? `, size ${li.size}` : ''} ({li.quantity} {li.unit_type})
                       </span>
-                      <span>{li.total_amount}</span>
+                      <span>{formatMoney(li.total_amount)}</span>
                     </div>
                   ))}
                   <div className="cart-total">
                     <span>Total</span>
-                    <span>{saleTotal}</span>
+                    <span>{formatMoney(saleTotal)}</span>
                   </div>
                 </div>
               )

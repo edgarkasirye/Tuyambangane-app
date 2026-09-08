@@ -101,7 +101,7 @@ export default function StyleDetail({ isNew = false }) {
   return (
     <div>
       <div className="page-title">
-        <h1>{isNew ? 'Add style' : name}</h1>
+        <h1>{isNew ? 'Add Art No.' : name}</h1>
       </div>
 
       <form className="card" onSubmit={handleSaveStyle}>

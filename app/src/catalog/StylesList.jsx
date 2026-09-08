@@ -46,7 +46,7 @@ export default function StylesList() {
       <div className="page-title">
         <h1>Catalog</h1>
         <Link className="fab-link" to="/catalog/new">
-          + Add style
+          + Add Art No.
         </Link>
       </div>
 

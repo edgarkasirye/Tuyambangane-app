@@ -42,6 +42,8 @@ textarea {
   background: var(--color-surface);
   color: var(--color-text);
   width: 100%;
+  min-width: 0; /* lets native date/select controls shrink inside a flex row instead of overflowing on narrow phones */
+  max-width: 100%;
 }
 
 label {
@@ -127,6 +129,18 @@ button.link-button,
   align-items: center;
   gap: 0.8rem;
   font-size: 0.9rem;
+  min-width: 0;
+}
+
+.app-header-user span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 40vw;
+}
+
+.app-header-user .link-button {
+  flex-shrink: 0;
 }
 
 .app-header-user .link-button {
@@ -275,6 +289,8 @@ button.link-button,
   font-weight: 600;
   background: var(--color-bg);
   color: var(--color-muted);
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .badge.inactive {
@@ -382,10 +398,12 @@ button.link-button,
 .field-row {
   display: flex;
   gap: 0.7rem;
+  flex-wrap: wrap;
 }
 
 .field-row > label {
-  flex: 1;
+  flex: 1 1 120px;
+  min-width: 0;
 }
 
 .unit-toggle {
@@ -420,6 +438,13 @@ button.link-button,
 
 .date-range-bar label {
   margin-bottom: 0;
+  min-width: 0;
+  flex: 1 1 140px;
+}
+
+.date-range-bar button {
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .sale-summary-row {
@@ -447,4 +472,92 @@ button.link-button,
   justify-content: space-between;
   font-size: 0.95rem;
   padding: 0.15rem 0;
+}
+
+.date-picker-toggle {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 0.6rem;
+  padding: 0.6rem 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+  color: var(--color-text);
+  flex: 1 1 200px;
+  min-width: 0;
+}
+
+.calendar {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 0.75rem;
+  padding: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.calendar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.6rem;
+  font-weight: 600;
+}
+
+.calendar-header .link-button {
+  font-size: 1.3rem;
+  line-height: 1;
+  text-decoration: none;
+  padding: 0.2rem 0.6rem;
+}
+
+.calendar-weekdays,
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.2rem;
+}
+
+.calendar-weekdays {
+  color: var(--color-muted);
+  font-size: 0.75rem;
+  text-align: center;
+  margin-bottom: 0.3rem;
+}
+
+.calendar-cell {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  border-radius: 0.5rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+  position: relative;
+  color: var(--color-text);
+  padding: 0;
+}
+
+.calendar-cell.empty {
+  cursor: default;
+}
+
+.calendar-cell.selected {
+  background: var(--color-primary);
+  color: var(--color-primary-text);
+}
+
+.calendar-cell.has-sales::after {
+  content: '';
+  position: absolute;
+  bottom: 3px;
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--color-success);
+}
+
+.calendar-cell.selected.has-sales::after {
+  background: var(--color-primary-text);
 }
