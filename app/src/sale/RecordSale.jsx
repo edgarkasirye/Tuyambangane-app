@@ -1,22 +1,36 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 import { useAuth } from '../auth/AuthContext'
 import { formatMoney } from '../lib/formatMoney'
+import { todayLocalISODate, toLocalISODate, combineLocalDateAndTime } from '../lib/dateRange'
 import LineItemForm from './LineItemForm'
 
+// Handles both recording a new sale (/sales/record) and editing an
+// existing one (/sales/:saleId/edit). Edit mode loads the sale into
+// the same cart UI and saves through update_sale instead of record_sale.
 export default function RecordSale() {
-  const { staffProfile, isOwnerOrAdmin } = useAuth()
+  const { saleId } = useParams()
+  const isEdit = Boolean(saleId)
+  const { user, staffProfile, isOwnerOrAdmin } = useAuth()
   const navigate = useNavigate()
+  const today = todayLocalISODate()
 
   const [shops, setShops] = useState(null)
   const [shopId, setShopId] = useState(staffProfile.shop_id ?? '')
+  const [date, setDate] = useState(today)
   const [variants, setVariants] = useState(null)
   const [query, setQuery] = useState('')
   const [selectedVariant, setSelectedVariant] = useState(null)
   const [cart, setCart] = useState([])
   const [submitting, setSubmitting] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState(null)
+
+  // Edit mode only: the sale as loaded, so we can keep its original
+  // time-of-day and tell whether the date was changed.
+  const [originalSale, setOriginalSale] = useState(null)
+  const [loadError, setLoadError] = useState(null)
 
   useEffect(() => {
     if (!isOwnerOrAdmin) return
@@ -44,6 +58,59 @@ export default function RecordSale() {
       })
   }, [])
 
+  useEffect(() => {
+    if (!isEdit) return
+    let cancelled = false
+
+    async function loadSale() {
+      const { data, error } = await supabase
+        .from('sales')
+        .select(
+          `id, sold_at, shop_id, staff_id,
+           sale_line_items(size, quantity, unit_type, unit_price,
+             variant:variants(id, color, style:styles(name, art_number)))`
+        )
+        .eq('id', saleId)
+        .maybeSingle()
+
+      if (cancelled) return
+      if (error) {
+        setLoadError(error.message)
+        return
+      }
+      if (!data) {
+        setLoadError('This sale was not found.')
+        return
+      }
+      if (!isOwnerOrAdmin && data.staff_id !== user.id) {
+        setLoadError('You can only edit sales you recorded yourself.')
+        return
+      }
+
+      setOriginalSale(data)
+      setShopId(data.shop_id)
+      setDate(toLocalISODate(new Date(data.sold_at)))
+      setCart(
+        data.sale_line_items.map((li) => ({
+          tempId: crypto.randomUUID(),
+          variantId: li.variant.id,
+          styleName: li.variant.style.name,
+          artNumber: li.variant.style.art_number,
+          color: li.variant.color,
+          size: li.size,
+          quantity: li.quantity,
+          unitType: li.unit_type,
+          unitPrice: Number(li.unit_price),
+        }))
+      )
+    }
+
+    loadSale()
+    return () => {
+      cancelled = true
+    }
+  }, [isEdit, saleId, isOwnerOrAdmin, user.id])
+
   const filteredVariants = useMemo(() => {
     if (!variants) return null
     const q = query.trim().toLowerCase()
@@ -70,7 +137,24 @@ export default function RecordSale() {
     setCart((prev) => prev.filter((item) => item.tempId !== tempId))
   }
 
-  async function handleCompleteSale() {
+  // The timestamp to save. Untouched dates keep their exact original
+  // value; a changed date keeps the original (or current) time of day.
+  function soldAtToSave() {
+    if (isEdit) {
+      const originalDate = toLocalISODate(new Date(originalSale.sold_at))
+      if (date === originalDate) return originalSale.sold_at
+      return combineLocalDateAndTime(date, new Date(originalSale.sold_at))
+    }
+    // New sale for today: let the server stamp the exact time.
+    if (date === today) return null
+    return combineLocalDateAndTime(date, new Date())
+  }
+
+  async function handleSave() {
+    if (date > today) {
+      setError('A sale cannot be dated in the future.')
+      return
+    }
     setSubmitting(true)
     setError(null)
 
@@ -82,10 +166,18 @@ export default function RecordSale() {
       unit_price: item.unitPrice,
     }))
 
-    const { error } = await supabase.rpc('record_sale', {
-      p_shop_id: shopId,
-      p_line_items: payload,
-    })
+    const { error } = isEdit
+      ? await supabase.rpc('update_sale', {
+          p_sale_id: saleId,
+          p_shop_id: shopId,
+          p_sold_at: soldAtToSave(),
+          p_line_items: payload,
+        })
+      : await supabase.rpc('record_sale', {
+          p_shop_id: shopId,
+          p_line_items: payload,
+          p_sold_at: soldAtToSave(),
+        })
 
     setSubmitting(false)
     if (error) {
@@ -93,28 +185,66 @@ export default function RecordSale() {
       return
     }
     setCart([])
-    navigate('/sales')
+    navigate(`/sales?date=${date}`)
   }
 
-  if (!variants) return <p className="page-loading">Loading catalog…</p>
+  async function handleDelete() {
+    if (!window.confirm('Delete this whole sale? This cannot be undone.')) return
+    setDeleting(true)
+    setError(null)
+
+    const { data, error } = await supabase.from('sales').delete().eq('id', saleId).select('id')
+
+    setDeleting(false)
+    if (error) {
+      setError(error.message)
+      return
+    }
+    if (!data || data.length === 0) {
+      setError('This sale could not be deleted. You may not have permission.')
+      return
+    }
+    navigate(`/sales?date=${date}`)
+  }
+
+  if (loadError) return <p className="form-error">{loadError}</p>
+  if (!variants || (isEdit && !originalSale)) return <p className="page-loading">Loading…</p>
+
+  const isBackdated = date !== today
 
   return (
     <div>
       <div className="page-title">
-        <h1>Record sale</h1>
+        <h1>{isEdit ? 'Edit sale' : 'Record sale'}</h1>
       </div>
 
-      {isOwnerOrAdmin && shops && (
+      <div className="field-row">
         <label>
-          Shop
-          <select value={shopId} onChange={(e) => setShopId(e.target.value)}>
-            {shops.map((shop) => (
-              <option key={shop.id} value={shop.id}>
-                {shop.name}
-              </option>
-            ))}
-          </select>
+          Sale date
+          <input
+            type="date"
+            value={date}
+            max={today}
+            onChange={(e) => setDate(e.target.value || today)}
+            required
+          />
         </label>
+
+        {isOwnerOrAdmin && shops && (
+          <label>
+            Shop
+            <select value={shopId} onChange={(e) => setShopId(e.target.value)}>
+              {shops.map((shop) => (
+                <option key={shop.id} value={shop.id}>
+                  {shop.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+      </div>
+      {!isEdit && isBackdated && (
+        <p className="form-note">This sale will be recorded for a past date.</p>
       )}
 
       {selectedVariant ? (
@@ -182,8 +312,20 @@ export default function RecordSale() {
             <span>{formatMoney(total)}</span>
           </div>
           {error && <p className="form-error">{error}</p>}
-          <button type="button" onClick={handleCompleteSale} disabled={submitting || !shopId}>
-            {submitting ? 'Saving…' : 'Complete sale'}
+          <button type="button" onClick={handleSave} disabled={submitting || deleting || !shopId}>
+            {submitting ? 'Saving…' : isEdit ? 'Save changes' : 'Complete sale'}
+          </button>
+        </div>
+      )}
+
+      {isEdit && (
+        <div className="card">
+          {cart.length === 0 && (
+            <p>A sale needs at least one item. Add an item, or delete the sale instead.</p>
+          )}
+          {cart.length === 0 && error && <p className="form-error">{error}</p>}
+          <button type="button" className="danger" onClick={handleDelete} disabled={deleting || submitting}>
+            {deleting ? 'Deleting…' : 'Delete sale'}
           </button>
         </div>
       )}

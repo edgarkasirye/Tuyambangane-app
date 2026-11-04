@@ -18,3 +18,24 @@ export function startOfLocalDayISO(dateStr) {
 export function endOfLocalDayISO(dateStr) {
   return new Date(`${dateStr}T23:59:59.999`).toISOString()
 }
+
+// Builds the sold_at timestamp for a sale placed on `dateStr` (a local
+// "YYYY-MM-DD"), keeping the local time-of-day from `timeSource`. Used
+// for backdating ("this sale happened last Tuesday") and for moving an
+// existing sale to another day without losing its original time. If
+// the result would land in the future (e.g. moving an evening sale to
+// this morning), it's clamped to now, since the database rejects
+// future-dated sales.
+export function combineLocalDateAndTime(dateStr, timeSource) {
+  const [y, m, d] = dateStr.split('-').map(Number)
+  const combined = new Date(
+    y,
+    m - 1,
+    d,
+    timeSource.getHours(),
+    timeSource.getMinutes(),
+    timeSource.getSeconds()
+  )
+  const now = new Date()
+  return (combined > now ? now : combined).toISOString()
+}

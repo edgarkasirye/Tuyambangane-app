@@ -26,6 +26,10 @@ Go to **SQL Editor** in the dashboard and run these three files in this exact or
 
 If any of them errors, stop and paste me the error rather than continuing, since the later files depend on the earlier ones.
 
+Then run every file in `supabase/migrations/`, in number order (`001_…`, `002_…`, …). Each one is a later change on top of the three files above:
+
+- `001_edit_and_backdate_sales.sql` — lets sales be backdated, edited and deleted (staff: only sales they recorded; owner/admin: any sale).
+
 ## 4. Confirm storage looks right
 
 Go to **Storage** in the dashboard. You should see a bucket called `variant-photos` marked public. You don't need to configure anything else there, the policies from step 3 already restrict who can upload to it.

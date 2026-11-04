@@ -23,6 +23,7 @@ export default function App() {
         <Route index element={<Navigate to="/sales" replace />} />
         <Route path="sales" element={<SalesView />} />
         <Route path="sales/record" element={<RecordSale />} />
+        <Route path="sales/:saleId/edit" element={<RecordSale />} />
         <Route path="catalog" element={<StylesList />} />
         <Route path="catalog/new" element={<StyleDetail isNew />} />
         <Route path="catalog/:styleId" element={<StyleDetail />} />

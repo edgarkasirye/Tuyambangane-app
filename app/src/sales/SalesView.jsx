@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 import { useAuth } from '../auth/AuthContext'
 import { todayLocalISODate, startOfLocalDayISO, endOfLocalDayISO, toLocalISODate } from '../lib/dateRange'
@@ -6,19 +7,32 @@ import { formatMoney } from '../lib/formatMoney'
 import MonthCalendar from './MonthCalendar'
 
 export default function SalesView() {
-  const { isOwnerOrAdmin } = useAuth()
+  const { isOwnerOrAdmin, user } = useAuth()
+  const [searchParams, setSearchParams] = useSearchParams()
   const today = todayLocalISODate()
   const todayObj = new Date(`${today}T00:00:00`)
 
-  const [date, setDate] = useState(today)
+  // ?date=YYYY-MM-DD lets Record/Edit sale send the user straight back
+  // to the day they just saved (which may be in the past).
+  const paramDate = searchParams.get('date')
+  const initialDate =
+    paramDate && /^\d{4}-\d{2}-\d{2}$/.test(paramDate) && paramDate <= today ? paramDate : today
+  const initialDateObj = new Date(`${initialDate}T00:00:00`)
+
+  const [date, setDateState] = useState(initialDate)
   const [calendarOpen, setCalendarOpen] = useState(false)
-  const [viewYear, setViewYear] = useState(todayObj.getFullYear())
-  const [viewMonth, setViewMonth] = useState(todayObj.getMonth())
+  const [viewYear, setViewYear] = useState(initialDateObj.getFullYear())
+  const [viewMonth, setViewMonth] = useState(initialDateObj.getMonth())
   const [monthSales, setMonthSales] = useState(null)
   const [shops, setShops] = useState(null)
   const [shopFilter, setShopFilter] = useState('all')
   const [sales, setSales] = useState(null)
   const [error, setError] = useState(null)
+
+  function setDate(d) {
+    setDateState(d)
+    setSearchParams(d === today ? {} : { date: d }, { replace: true })
+  }
 
   useEffect(() => {
     if (!isOwnerOrAdmin) return
@@ -70,10 +84,11 @@ export default function SalesView() {
 
     async function load() {
       setSales(null)
+      setError(null)
       const { data, error } = await supabase
         .from('sales')
         .select(
-          `id, sold_at,
+          `id, sold_at, staff_id, updated_at,
            shop:shops(id, name),
            staff:staff(name),
            sale_line_items(id, size, quantity, unit_type, unit_price, total_amount,
@@ -109,6 +124,12 @@ export default function SalesView() {
   }, [filteredSales])
 
   const isToday = date === today
+
+  // Mirrors the database rule: staff edit only their own sales,
+  // owner/admin edit any. The database enforces this regardless.
+  function canEdit(sale) {
+    return isOwnerOrAdmin || sale.staff_id === user?.id
+  }
 
   function handleToday() {
     setDate(today)
@@ -222,6 +243,24 @@ export default function SalesView() {
                     <span>Total</span>
                     <span>{formatMoney(saleTotal)}</span>
                   </div>
+                  {(sale.updated_at || canEdit(sale)) && (
+                    <div className="sale-card-footer">
+                      <span>
+                        {sale.updated_at &&
+                          `Edited ${new Date(sale.updated_at).toLocaleString([], {
+                            day: 'numeric',
+                            month: 'short',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}`}
+                      </span>
+                      {canEdit(sale) && (
+                        <Link className="link-button" to={`/sales/${sale.id}/edit`}>
+                          Edit
+                        </Link>
+                      )}
+                    </div>
+                  )}
                 </div>
               )
             })}
