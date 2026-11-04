@@ -23,22 +23,32 @@ export default function AddVariantForm({ styleId, businessId, onAdded }) {
       if (insertError) throw insertError
 
       let final = variant
+      let photoError = null
       if (file) {
-        const imageUrl = await uploadVariantPhoto({ businessId, variantId: variant.id, file })
-        const { data, error: updateError } = await supabase
-          .from('variants')
-          .update({ image_url: imageUrl })
-          .eq('id', variant.id)
-          .select()
-          .single()
-        if (updateError) throw updateError
-        final = data
+        // The color is already saved at this point. If the photo step
+        // fails, still show the new color (instead of leaving it saved
+        // but invisible, which makes a retry hit "already added") and
+        // tell the user to retry the photo from the color's own row.
+        try {
+          const imageUrl = await uploadVariantPhoto({ businessId, variantId: variant.id, file })
+          const { data, error: updateError } = await supabase
+            .from('variants')
+            .update({ image_url: imageUrl })
+            .eq('id', variant.id)
+            .select()
+            .single()
+          if (updateError) throw updateError
+          final = data
+        } catch (err) {
+          photoError = `Color added, but the photo didn't upload (${friendlyDbError(err)}). Use "Add photo" on the color to try again.`
+        }
       }
 
       onAdded(final)
       setColor('')
       setFile(null)
       e.target.reset()
+      if (photoError) setError(photoError)
     } catch (err) {
       setError(friendlyDbError(err))
     } finally {

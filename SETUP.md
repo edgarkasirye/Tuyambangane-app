@@ -29,6 +29,7 @@ If any of them errors, stop and paste me the error rather than continuing, since
 Then run every file in `supabase/migrations/`, in number order (`001_…`, `002_…`, …). Each one is a later change on top of the three files above:
 
 - `001_edit_and_backdate_sales.sql` — lets sales be backdated, edited and deleted (staff: only sales they recorded; owner/admin: any sale).
+- `002_fix_photo_upload_policies.sql` — fixes photo uploads (adds the read permission Storage needs to upload/replace a photo).
 
 ## 4. Confirm storage looks right
 
