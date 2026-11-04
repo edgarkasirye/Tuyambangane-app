@@ -90,7 +90,7 @@ export default function SalesView() {
         .select(
           `id, sold_at, staff_id, updated_at,
            shop:shops(id, name),
-           staff:staff(name),
+           staff:staff!staff_id(name),
            sale_line_items(id, size, quantity, unit_type, unit_price, total_amount,
              variant:variants(color, style:styles(name, art_number)))`
         )
