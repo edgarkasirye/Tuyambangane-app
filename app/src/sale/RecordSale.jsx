@@ -247,6 +247,36 @@ export default function RecordSale() {
         <p className="form-note">This sale will be recorded for a past date.</p>
       )}
 
+      {cart.length > 0 && (
+        <div className="card">
+          <h2 style={{ marginTop: 0 }}>This sale</h2>
+          {cart.map((item) => (
+            <div className="cart-item" key={item.tempId}>
+              <div>
+                <div>
+                  <strong>{item.artNumber}</strong> · {item.styleName} — {item.color}
+                  {item.size ? `, size ${item.size}` : ''}
+                </div>
+                <div className="art-number">
+                  {item.quantity} × {item.unitType} @ {formatMoney(item.unitPrice)}
+                </div>
+              </div>
+              <button type="button" className="link-button" onClick={() => handleRemoveLineItem(item.tempId)}>
+                Remove
+              </button>
+            </div>
+          ))}
+          <div className="cart-total">
+            <span>Total</span>
+            <span>{formatMoney(total)}</span>
+          </div>
+          {error && <p className="form-error">{error}</p>}
+          <button type="button" onClick={handleSave} disabled={submitting || deleting || !shopId}>
+            {submitting ? 'Saving…' : isEdit ? 'Save changes' : 'Complete sale'}
+          </button>
+        </div>
+      )}
+
       {selectedVariant ? (
         <LineItemForm
           variant={selectedVariant}
@@ -286,36 +316,6 @@ export default function RecordSale() {
             ))}
           </div>
         </>
-      )}
-
-      {cart.length > 0 && (
-        <div className="card">
-          <h2 style={{ marginTop: 0 }}>This sale</h2>
-          {cart.map((item) => (
-            <div className="cart-item" key={item.tempId}>
-              <div>
-                <div>
-                  <strong>{item.artNumber}</strong> · {item.styleName} — {item.color}
-                  {item.size ? `, size ${item.size}` : ''}
-                </div>
-                <div className="art-number">
-                  {item.quantity} × {item.unitType} @ {formatMoney(item.unitPrice)}
-                </div>
-              </div>
-              <button type="button" className="link-button" onClick={() => handleRemoveLineItem(item.tempId)}>
-                Remove
-              </button>
-            </div>
-          ))}
-          <div className="cart-total">
-            <span>Total</span>
-            <span>{formatMoney(total)}</span>
-          </div>
-          {error && <p className="form-error">{error}</p>}
-          <button type="button" onClick={handleSave} disabled={submitting || deleting || !shopId}>
-            {submitting ? 'Saving…' : isEdit ? 'Save changes' : 'Complete sale'}
-          </button>
-        </div>
       )}
 
       {isEdit && (
