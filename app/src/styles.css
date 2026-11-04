@@ -592,3 +592,104 @@ button.danger:disabled {
   font-size: 0.8rem;
   margin-top: 0.5rem;
 }
+
+/* ---------- Photo preview ---------- */
+
+.thumb-button {
+  padding: 0;
+  border: none;
+  overflow: hidden;
+  cursor: zoom-in;
+  display: block;
+}
+
+.thumb-button img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.sale-line-thumb {
+  width: 36px;
+  height: 36px;
+  border-radius: 0.35rem;
+  object-fit: cover;
+  background: var(--color-bg);
+  flex-shrink: 0;
+}
+
+.line-with-thumb {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 0;
+}
+
+.photo-preview {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.88);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  cursor: zoom-out;
+}
+
+.photo-preview img {
+  max-width: 100%;
+  max-height: 80vh;
+  object-fit: contain;
+  border-radius: 0.5rem;
+}
+
+.photo-preview-caption {
+  color: #f5f5f4;
+  margin-top: 0.8rem;
+  text-align: center;
+  font-size: 0.95rem;
+}
+
+.photo-preview-close {
+  position: absolute;
+  top: max(0.6rem, env(safe-area-inset-top));
+  right: 0.8rem;
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+  border: none;
+  border-radius: 999px;
+  width: 2.4rem;
+  height: 2.4rem;
+  font-size: 1.6rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+/* Long-press on picker tiles: stop the phone's own image menu and
+   text selection from appearing instead of our preview. */
+.variant-picker-item {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.variant-picker-item img {
+  pointer-events: none;
+}
+
+.picker-hint {
+  color: var(--color-muted);
+  font-size: 0.8rem;
+  margin: -0.5rem 0 0.8rem;
+}
+
+.photo-selected-preview {
+  width: 72px;
+  height: 72px;
+  border-radius: 0.5rem;
+  object-fit: cover;
+  margin-bottom: 0.8rem;
+}

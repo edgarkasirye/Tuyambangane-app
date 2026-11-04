@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import { supabase } from '../supabaseClient'
 import { uploadVariantPhoto } from '../lib/photos'
+import { PreviewableThumb } from '../components/PhotoPreview'
 
 export default function VariantRow({ variant, businessId, onUpdated }) {
   const [busy, setBusy] = useState(false)
@@ -46,11 +47,7 @@ export default function VariantRow({ variant, businessId, onUpdated }) {
 
   return (
     <div className="variant-row">
-      {variant.image_url ? (
-        <img className="variant-thumb" src={variant.image_url} alt={variant.color} />
-      ) : (
-        <div className="variant-thumb" />
-      )}
+      <PreviewableThumb className="variant-thumb" src={variant.image_url} alt={variant.color} />
       <div className="variant-info">
         <div>{variant.color}</div>
         <span className={`badge ${variant.active ? 'active' : 'inactive'}`}>

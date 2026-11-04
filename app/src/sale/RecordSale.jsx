@@ -5,6 +5,8 @@ import { useAuth } from '../auth/AuthContext'
 import { formatMoney } from '../lib/formatMoney'
 import { todayLocalISODate, toLocalISODate, combineLocalDateAndTime } from '../lib/dateRange'
 import LineItemForm from './LineItemForm'
+import VariantPickerTile from './VariantPickerTile'
+import { PreviewableThumb } from '../components/PhotoPreview'
 
 // Handles both recording a new sale (/sales/record) and editing an
 // existing one (/sales/:saleId/edit). Edit mode loads the sale into
@@ -68,7 +70,7 @@ export default function RecordSale() {
         .select(
           `id, sold_at, shop_id, staff_id,
            sale_line_items(size, quantity, unit_type, unit_price,
-             variant:variants(id, color, style:styles(name, art_number)))`
+             variant:variants(id, color, image_url, style:styles(name, art_number)))`
         )
         .eq('id', saleId)
         .maybeSingle()
@@ -97,6 +99,7 @@ export default function RecordSale() {
           styleName: li.variant.style.name,
           artNumber: li.variant.style.art_number,
           color: li.variant.color,
+          imageUrl: li.variant.image_url,
           size: li.size,
           quantity: li.quantity,
           unitType: li.unit_type,
@@ -252,13 +255,21 @@ export default function RecordSale() {
           <h2 style={{ marginTop: 0 }}>This sale</h2>
           {cart.map((item) => (
             <div className="cart-item" key={item.tempId}>
-              <div>
+              <div className="line-with-thumb">
+                <PreviewableThumb
+                  className="sale-line-thumb"
+                  src={item.imageUrl}
+                  alt={item.color}
+                  caption={`${item.artNumber} · ${item.styleName} — ${item.color}`}
+                />
                 <div>
-                  <strong>{item.artNumber}</strong> · {item.styleName} — {item.color}
-                  {item.size ? `, size ${item.size}` : ''}
-                </div>
-                <div className="art-number">
-                  {item.quantity} × {item.unitType} @ {formatMoney(item.unitPrice)}
+                  <div>
+                    <strong>{item.artNumber}</strong> · {item.styleName} — {item.color}
+                    {item.size ? `, size ${item.size}` : ''}
+                  </div>
+                  <div className="art-number">
+                    {item.quantity} × {item.unitType} @ {formatMoney(item.unitPrice)}
+                  </div>
                 </div>
               </div>
               <button type="button" className="link-button" onClick={() => handleRemoveLineItem(item.tempId)}>
@@ -295,24 +306,11 @@ export default function RecordSale() {
               style={{ marginBottom: '1rem' }}
             />
           )}
+          {variants.length > 0 && <p className="picker-hint">Tap to add · press and hold to see the photo</p>}
           {variants.length > 0 && filteredVariants.length === 0 && <p>No matches.</p>}
           <div className="variant-picker-grid">
             {filteredVariants.map((variant) => (
-              <div
-                key={variant.id}
-                className="variant-picker-item"
-                onClick={() => setSelectedVariant(variant)}
-              >
-                {variant.image_url ? (
-                  <img src={variant.image_url} alt={variant.color} />
-                ) : (
-                  <div style={{ width: '100%', aspectRatio: '1', background: '#f5f5f4', borderRadius: '0.4rem' }} />
-                )}
-                <div className="color">{variant.style.art_number}</div>
-                <div className="art-number">
-                  {variant.style.name} · {variant.color}
-                </div>
-              </div>
+              <VariantPickerTile key={variant.id} variant={variant} onSelect={setSelectedVariant} />
             ))}
           </div>
         </>

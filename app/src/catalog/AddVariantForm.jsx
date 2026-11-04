@@ -2,12 +2,23 @@ import { useState } from 'react'
 import { supabase } from '../supabaseClient'
 import { uploadVariantPhoto } from '../lib/photos'
 import { friendlyDbError } from '../lib/friendlyError'
+import { PreviewableThumb } from '../components/PhotoPreview'
 
 export default function AddVariantForm({ styleId, businessId, onAdded }) {
   const [color, setColor] = useState('')
   const [file, setFile] = useState(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
+  const [filePreviewUrl, setFilePreviewUrl] = useState(null)
+
+  // Show the chosen photo before it's uploaded, so staff can check
+  // they picked the right picture. Old preview URLs are released as
+  // soon as they're replaced.
+  function chooseFile(next) {
+    if (filePreviewUrl) URL.revokeObjectURL(filePreviewUrl)
+    setFile(next)
+    setFilePreviewUrl(next ? URL.createObjectURL(next) : null)
+  }
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -46,7 +57,7 @@ export default function AddVariantForm({ styleId, businessId, onAdded }) {
 
       onAdded(final)
       setColor('')
-      setFile(null)
+      chooseFile(null)
       e.target.reset()
       if (photoError) setError(photoError)
     } catch (err) {
@@ -69,8 +80,16 @@ export default function AddVariantForm({ styleId, businessId, onAdded }) {
       </label>
       <label>
         Photo (optional)
-        <input type="file" accept="image/*" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+        <input type="file" accept="image/*" onChange={(e) => chooseFile(e.target.files?.[0] ?? null)} />
       </label>
+      {filePreviewUrl && (
+        <PreviewableThumb
+          className="photo-selected-preview"
+          src={filePreviewUrl}
+          alt="Selected photo"
+          caption={color.trim() || 'Selected photo'}
+        />
+      )}
       {error && <p className="form-error">{error}</p>}
       <button type="submit" disabled={saving}>
         {saving ? 'Adding…' : 'Add color'}

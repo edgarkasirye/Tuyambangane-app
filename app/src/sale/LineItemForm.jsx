@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { PreviewableThumb } from '../components/PhotoPreview'
 
 export default function LineItemForm({ variant, onCancel, onAdd }) {
   const sizes = variant.style.sizes_offered ?? []
@@ -25,6 +26,7 @@ export default function LineItemForm({ variant, onCancel, onAdd }) {
       styleName: variant.style.name,
       artNumber: variant.style.art_number,
       color: variant.color,
+      imageUrl: variant.image_url,
       size: finalSize,
       quantity: Number(quantity),
       unitType,
@@ -35,9 +37,17 @@ export default function LineItemForm({ variant, onCancel, onAdd }) {
   return (
     <form className="card" onSubmit={handleSubmit}>
       <div className="page-title">
-        <strong>
-          {variant.style.art_number} · {variant.style.name} — {variant.color}
-        </strong>
+        <div className="line-with-thumb">
+          <PreviewableThumb
+            className="variant-thumb"
+            src={variant.image_url}
+            alt={variant.color}
+            caption={`${variant.style.art_number} · ${variant.style.name} — ${variant.color}`}
+          />
+          <strong>
+            {variant.style.art_number} · {variant.style.name} — {variant.color}
+          </strong>
+        </div>
         <button type="button" className="link-button" onClick={onCancel}>
           Cancel
         </button>

@@ -5,6 +5,7 @@ import { useAuth } from '../auth/AuthContext'
 import { todayLocalISODate, startOfLocalDayISO, endOfLocalDayISO, toLocalISODate } from '../lib/dateRange'
 import { formatMoney } from '../lib/formatMoney'
 import MonthCalendar from './MonthCalendar'
+import { PreviewableThumb } from '../components/PhotoPreview'
 
 export default function SalesView() {
   const { isOwnerOrAdmin, user } = useAuth()
@@ -92,7 +93,7 @@ export default function SalesView() {
            shop:shops(id, name),
            staff:staff!staff_id(name),
            sale_line_items(id, size, quantity, unit_type, unit_price, total_amount,
-             variant:variants(color, style:styles(name, art_number)))`
+             variant:variants(color, image_url, style:styles(name, art_number)))`
         )
         .gte('sold_at', startOfLocalDayISO(date))
         .lte('sold_at', endOfLocalDayISO(date))
@@ -231,10 +232,18 @@ export default function SalesView() {
                   </div>
                   {sale.sale_line_items.map((li) => (
                     <div className="sale-line" key={li.id}>
-                      <span>
-                        <strong>{li.variant.style.art_number}</strong> · {li.variant.style.name} —{' '}
-                        {li.variant.color}
-                        {li.size ? `, size ${li.size}` : ''} ({li.quantity} {li.unit_type})
+                      <span className="line-with-thumb">
+                        <PreviewableThumb
+                          className="sale-line-thumb"
+                          src={li.variant.image_url}
+                          alt={li.variant.color}
+                          caption={`${li.variant.style.art_number} · ${li.variant.style.name} — ${li.variant.color}`}
+                        />
+                        <span>
+                          <strong>{li.variant.style.art_number}</strong> · {li.variant.style.name} —{' '}
+                          {li.variant.color}
+                          {li.size ? `, size ${li.size}` : ''} ({li.quantity} {li.unit_type})
+                        </span>
                       </span>
                       <span>{formatMoney(li.total_amount)}</span>
                     </div>

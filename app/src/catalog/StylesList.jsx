@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
+import { PreviewableThumb } from '../components/PhotoPreview'
 
 export default function StylesList() {
   const [styles, setStyles] = useState(null)
@@ -68,12 +69,12 @@ export default function StylesList() {
 
           return (
             <Link key={style.id} to={`/catalog/${style.id}`} className="card style-card">
-              {/* eslint-disable-next-line jsx-a11y/img-redundant-alt */}
-              {thumb ? (
-                <img className="style-card-thumb" src={thumb} alt={style.name} />
-              ) : (
-                <div className="style-card-thumb" />
-              )}
+              <PreviewableThumb
+                className="style-card-thumb"
+                src={thumb}
+                alt={style.name}
+                caption={`${style.art_number} · ${style.name}`}
+              />
               <div className="style-card-info">
                 <div className="art-number-primary">{style.art_number}</div>
                 <div className="style-name-secondary">{style.name}</div>
